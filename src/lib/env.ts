@@ -27,10 +27,11 @@ export function env(): Env {
     throw new Error(`Configuration invalide (variables : ${fields}). Voir .env.example.`);
   }
   if (parsed.data.NODE_ENV === "production") {
-    if (!parsed.data.APP_URL.startsWith("https://")) {
+    const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(parsed.data.APP_URL);
+    if (!parsed.data.APP_URL.startsWith("https://") && !local) {
       throw new Error("APP_URL doit utiliser HTTPS en production.");
     }
-    if (!parsed.data.SMTP_URL) {
+    if (!parsed.data.SMTP_URL && !local) {
       throw new Error("SMTP_URL est obligatoire en production.");
     }
   }

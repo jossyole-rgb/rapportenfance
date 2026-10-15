@@ -7,18 +7,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint --max-warnings=0",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --project unit && npm run test:integration",
     "test:unit": "vitest run --project unit",
-    "test:integration": "vitest run --project integration",
+    "test:integration": "npm run db:test:prepare --silent && vitest run --project integration",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "retention:purge": "tsx scripts/retention-purge.ts",
-    "keys:generate": "tsx scripts/generate-keys.ts"
+    "keys:generate": "tsx scripts/generate-keys.ts",
+    "db:test:prepare": "node scripts/prepare-test-db.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -53,5 +54,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^5.0.4"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

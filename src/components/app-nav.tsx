@@ -79,12 +79,12 @@ export function AppNav({
             <p className="truncate text-xs text-brand-100/70">{user.roleLabel}</p>
           </div>
         </div>
-        <div className="mt-1 flex gap-1">
-          <Link href="/compte" onClick={() => setOpen(false)} className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-100/80 hover:bg-white/6 hover:text-white">
+        <div className="mt-1 grid grid-cols-2 gap-1">
+          <Link href="/compte" onClick={() => setOpen(false)} className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-brand-100/80 hover:bg-white/6 hover:text-white">
             <UserCircle className="size-4" aria-hidden /> Mon compte
           </Link>
           <form action={logoutAction}>
-            <button type="submit" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-100/80 hover:bg-white/6 hover:text-white">
+            <button type="submit" className="flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-brand-100/80 hover:bg-white/6 hover:text-white">
               <LogOut className="size-4" aria-hidden /> Déconnexion
             </button>
           </form>

@@ -332,6 +332,7 @@ async function writeVersion(
 
 export async function saveDocumentContent(actor: Actor, id: string, raw: unknown, ip?: string) {
   const { doc } = await loadDocument(actor, id, "edit");
+  wrapWorkflow(() => assertTransition(doc.status as Status, "EDIT"));
   const parsed = saveContentSchema.safeParse(raw);
   if (!parsed.success) throw invalid("Le contenu envoyé est invalide.", fieldErrors(parsed.error));
   if (parsed.data.baseVersion !== doc.currentVersion) {

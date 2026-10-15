@@ -16,22 +16,22 @@ export function ExportMenu({ documentId, final, draft }: { documentId: string; f
         <Download className="size-4" aria-hidden /> Exporter
       </Button>
       {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+        <div role="menu" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
           {final ? (
             <>
               <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Export définitif (document validé)</p>
-              <a role="menuitem" href={link("pdf", "final")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-brand-600" aria-hidden /> PDF</a>
-              <a role="menuitem" href={link("docx", "final")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-brand-600" aria-hidden /> Word (DOCX)</a>
+              <a role="menuitem" onClick={() => setOpen(false)} href={link("pdf", "final")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-brand-600" aria-hidden /> PDF</a>
+              <a role="menuitem" onClick={() => setOpen(false)} href={link("docx", "final")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-brand-600" aria-hidden /> Word (DOCX)</a>
             </>
           ) : (
             <p className="px-3 py-2 text-xs text-slate-500">L&apos;export définitif sera disponible après validation humaine.</p>
           )}
-          {draft && (
+          {draft && !final && (
             <>
               <p className="border-t border-slate-100 px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Export de travail</p>
               <p className="px-3 pb-1 text-xs text-err-700">Chaque page porte la mention « BROUILLON NON VALIDÉ ».</p>
-              <a role="menuitem" href={link("pdf", "draft")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-slate-500" aria-hidden /> PDF de travail</a>
-              <a role="menuitem" href={link("docx", "draft")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-slate-500" aria-hidden /> Word de travail</a>
+              <a role="menuitem" onClick={() => setOpen(false)} href={link("pdf", "draft")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-slate-500" aria-hidden /> PDF de travail</a>
+              <a role="menuitem" onClick={() => setOpen(false)} href={link("docx", "draft")} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><FileDown className="size-4 text-slate-500" aria-hidden /> Word de travail</a>
             </>
           )}
         </div>

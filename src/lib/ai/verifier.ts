@@ -87,7 +87,7 @@ export function verifyClaimText(
   const unionSet = new Set(top.flatMap((r) => tokens.filter((t) => r.s.tokens.has(t))));
   const union = unionSet.size / tokens.length;
   const score = Math.round(Math.max(single, union * 0.9) * 100) / 100;
-  const sourceSegmentIds = top.filter((r) => r.hit / tokens.length >= 0.2 || r === best).map((r) => r.s.seg.id);
+  const sourceSegmentIds = top.filter((r) => r.hit / tokens.length >= 0.34 || r === best).map((r) => r.s.seg.id);
 
   // Citations directes : les mots exacts doivent figurer dans les notes (§ 7.3)
   for (const q of quotedPassages(trimmed)) {

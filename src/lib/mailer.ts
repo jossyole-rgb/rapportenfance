@@ -17,7 +17,8 @@ export async function sendMail(mail: Mail): Promise<void> {
     await transport.sendMail({ from: process.env.MAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text });
     return;
   }
-  if (process.env.NODE_ENV === "production") throw new Error("SMTP_URL non configuré.");
+  const localUrl = /^http:\/\/(localhost|127\.0\.0\.1)/.test(process.env.APP_URL ?? "");
+  if (process.env.NODE_ENV === "production" && !localUrl) throw new Error("SMTP_URL non configuré.");
   const dir = path.join(process.cwd(), ".dev-mailbox");
   await fs.mkdir(dir, { recursive: true });
   const file = path.join(dir, `${Date.now()}-${mail.to.replace(/[^a-z0-9@.]/gi, "_")}.txt`);
