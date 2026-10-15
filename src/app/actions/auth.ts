@@ -10,7 +10,7 @@ import { needsMfaSetup } from "@/lib/auth/mfa-policy";
 import { toActionError } from "@/lib/errors";
 
 export type FormState =
-  | { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; message?: string; codes?: string[] }
+  | { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; message?: string; codes?: string[]; email?: string }
   | undefined;
 
 const isProd = () => process.env.NODE_ENV === "production";
@@ -42,7 +42,8 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
       target = needsMfaSetup(user) ? MFA_SETUP_PATH : next ?? homeFor(user.roles);
     }
   } catch (e) {
-    return toActionError(e);
+    // l'adresse saisie est conservée dans le formulaire (React vide les champs après l'action)
+    return { ...toActionError(e), email: str(fd, "email").slice(0, 200) };
   }
   redirect(target);
 }

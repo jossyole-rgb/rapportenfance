@@ -3,13 +3,14 @@
  * À planifier quotidiennement (cron ou tâche planifiée de l'hébergeur) : npm run retention:purge
  */
 import { PrismaClient } from "@prisma/client";
-import { purgeExpiredDocuments, purgeTechnicalRecords } from "../src/lib/retention";
+import { purgeExpiredAuditLogs, purgeExpiredDocuments, purgeTechnicalRecords } from "../src/lib/retention";
 
 const db = new PrismaClient();
 
 purgeExpiredDocuments(db)
   .then(async (n) => {
     console.log(`Purge de conservation terminée : ${n} document(s) supprimé(s).`);
+    console.log(`Journal d'audit : ${await purgeExpiredAuditLogs(db)} entrée(s) expirée(s) supprimée(s).`);
     console.log(`Nettoyage technique : ${await purgeTechnicalRecords(db)} enregistrement(s) expiré(s) supprimé(s).`);
   })
   .catch((e) => {

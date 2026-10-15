@@ -25,6 +25,13 @@ export default async function VersionPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         eyebrow={<Link href={`/ecrits/${id}`} className="hover:underline">Retour à l&apos;écrit</Link>}
+        actions={
+          v.version > 1 ? (
+            <Link href={`/ecrits/${id}/comparer?de=${v.version - 1}&a=${v.version}`} className="text-sm font-medium text-brand-700 hover:underline">
+              Comparer avec la version précédente
+            </Link>
+          ) : undefined
+        }
         title={`Version ${v.version}`}
         description={`${v.changeSummary ?? "-"} · ${v.createdByName} · ${fmtDateTime(v.createdAt)} · consultation seule`}
       />

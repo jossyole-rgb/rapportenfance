@@ -35,6 +35,7 @@ Légende : ✅ en place et testé · ☑️ en place, non couvert par un test au
 - ✅ Erreurs serveur journalisées sans données métier, avec identifiant de référence.
 - ✅ Identifiant de dossier pseudonyme ; l'interface rappelle de ne pas saisir nom de famille, adresse ou numéro.
 - ✅ Durée de conservation paramétrable par établissement + purge planifiable, tracée.
+- ✅ Durée de conservation du journal d'audit paramétrable par établissement (365 jours par défaut, 90 jours minimum), purge tracée (`audit.purged`) ; journal de l'administration technique : 365 jours.
 - ✅ Aucune donnée transmise à un service tiers : moteur de rédaction local, exports générés sur le serveur, pas de police, script ou traceur externe.
 - ✅ Jeux de données de démonstration 100 % fictifs ; seed refusé en production.
 - ⬜ Chiffrement au repos de la base et des sauvegardes côté hébergeur (dépend de l'hébergeur retenu).

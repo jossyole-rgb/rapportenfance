@@ -67,6 +67,8 @@ model Organization {
   validationMode       ValidationMode @default(SUPERVISOR)
   // Durée de conservation (jours) des documents archivés avant purge
   retentionDays        Int            @default(1825)
+  // Durée de conservation (jours) du journal d'audit (traces d'accès et d'actions)
+  auditRetentionDays   Int            @default(365)
   // Double authentification obligatoire pour les utilisateurs de l'établissement
   mfaRequired          Boolean        @default(true)
   isActive             Boolean        @default(true)

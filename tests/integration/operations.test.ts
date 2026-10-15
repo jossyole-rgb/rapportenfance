@@ -74,3 +74,44 @@ describe("nettoyage technique", () => {
     expect(active.token).not.toBe(expired.token);
   });
 });
+
+describe("comparaison de versions", () => {
+  it("compare deux versions d'un écrit, sans accès depuis un autre établissement", async () => {
+    const { generateDocument, saveDocumentContent, compareDocumentVersions } = await import("@/lib/services/documents");
+    const org = await makeOrg();
+    const pro = await makeUser(org.id, ["PROFESSIONAL"]);
+    const outsider = await makeUser((await makeOrg()).id, ["PROFESSIONAL", "VALIDATOR"]);
+    const cf = await createCaseFile(pro, { reference: "CMP-1", childAlias: "Lucas" });
+    const doc = await createDocument(pro, docInput(cf.id));
+    await generateDocument(pro, doc.id);
+    const ws = await getDocumentWorkspace(pro, doc.id);
+    const sections = ws.content!.sections.map((s) => ({ key: s.key, text: s.text.replace("Logement propre.", "Le logement est propre.") }));
+    await saveDocumentContent(pro, doc.id, { baseVersion: ws.currentVersion, sections });
+    const cmp = await compareDocumentVersions(pro, doc.id, 1, 2);
+    expect(cmp.stats.changedSections).toBe(1);
+    const modified = cmp.diffs.find((d) => d.status === "modified")!;
+    expect(modified.parts.filter((p) => p.type === "added").map((p) => p.text).join("")).toContain("est");
+    expect((await compareDocumentVersions(pro, doc.id, 2, 2)).stats.changedSections).toBe(0);
+    await expect(compareDocumentVersions(outsider, doc.id, 1, 2)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(compareDocumentVersions(pro, doc.id, 1, 9)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("conservation du journal d'audit", () => {
+  it("supprime les entrées plus anciennes que la durée de l'établissement, et trace la purge", async () => {
+    const { purgeExpiredAuditLogs } = await import("@/lib/retention");
+    const org = await db.organization.create({ data: { name: "Org journal", slug: `org-journal-${Date.now()}`, auditRetentionDays: 180 } });
+    const old = new Date(Date.now() - 200 * 86400_000);
+    const recent = new Date(Date.now() - 10 * 86400_000);
+    await db.auditLog.createMany({
+      data: [
+        { organizationId: org.id, action: "auth.login", createdAt: old },
+        { organizationId: org.id, action: "document.viewed", createdAt: old },
+        { organizationId: org.id, action: "auth.login", createdAt: recent },
+      ],
+    });
+    expect(await purgeExpiredAuditLogs(db)).toBeGreaterThanOrEqual(2);
+    const rows = await db.auditLog.findMany({ where: { organizationId: org.id } });
+    expect(rows.map((r) => r.action).sort()).toEqual(["audit.purged", "auth.login"]);
+  });
+});

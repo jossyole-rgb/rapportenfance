@@ -91,7 +91,7 @@ Tester la restauration au moins une fois par trimestre et consigner le test.
 15 2 * * *  cd /srv/rapportenfance && npm run retention:purge >> /var/log/rapportenfance-purge.log 2>&1
 ```
 
-Chaque purge est tracée dans le journal d'audit (`retention.purged`, sans contenu). La même tâche supprime les enregistrements techniques expirés (sessions, vérifications de second facteur, jetons, compteurs de débit).
+Chaque purge est tracée dans le journal d'audit (`retention.purged`, sans contenu). La même tâche purge le journal d'audit selon la durée fixée par chaque établissement et supprime les enregistrements techniques expirés (sessions, vérifications de second facteur, jetons, compteurs de débit).
 
 ## 7. Rotation de la clé de chiffrement
 

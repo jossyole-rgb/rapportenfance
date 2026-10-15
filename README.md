@@ -21,7 +21,7 @@ RapportEnfance IA transforme les notes prises lors d'un entretien, d'une visite 
 | Contrôle qualité | Contrôles automatiques + indicateur de qualité rédactionnelle (indicatif) + checklist de relecture obligatoire |
 | Validation humaine | Brouillon → Généré → À vérifier → Relu → Validé → Exporté/Archivé, validateur et horodatage, réouverture tracée |
 | Exports | PDF et DOCX avec en-tête institutionnel, version, statut ; export de travail marqué « BROUILLON NON VALIDÉ » |
-| Historique | Recherche et filtres (dossier, type, auteur, date, statut), versions immuables, restauration, archivage, suppression, purge de conservation |
+| Historique | Recherche et filtres (dossier, type, auteur, date, statut), versions immuables, comparaison mot à mot entre deux versions, restauration, archivage, suppression, purge de conservation |
 | Administration | Utilisateurs et invitations, paramètres de l'établissement, journal d'audit, conservation, organisations (administration technique) |
 
 ## Démarrage rapide (local)

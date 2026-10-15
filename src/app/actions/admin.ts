@@ -56,7 +56,7 @@ export async function updateOrgSettingsAction(_: FormState, fd: FormData): Promi
   const user = await actor();
   try {
     await updateOrgSettings(user, {
-      ...Object.fromEntries(["name", "headerLine1", "headerLine2", "headerLine3", "validationMode", "retentionDays"].map((k) => [k, str(fd, k)])),
+      ...Object.fromEntries(["name", "headerLine1", "headerLine2", "headerLine3", "validationMode", "retentionDays", "auditRetentionDays"].map((k) => [k, str(fd, k)])),
       mfaRequired: fd.get("mfaRequired") === "on",
     });
     revalidatePath("/admin/etablissement");

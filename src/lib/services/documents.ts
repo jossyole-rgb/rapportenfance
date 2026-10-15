@@ -1,4 +1,5 @@
 import "server-only";
+import { diffSections, diffStats } from "@/lib/diff";
 import type { Document, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -287,6 +288,29 @@ export async function getDocumentVersion(actor: Actor, id: string, version: numb
     createdAt: row.createdAt,
     createdByName: row.createdBy.fullName,
     content: decryptJson<ReportContent>(row.contentEnc),
+  };
+}
+
+/** Comparaison de deux versions d'un même écrit (lecture seule). */
+export async function compareDocumentVersions(actor: Actor, id: string, from: number, to: number) {
+  const { doc } = await loadDocument(actor, id, "read");
+  const versions = await db.documentVersion.findMany({
+    where: { documentId: id },
+    orderBy: { version: "asc" },
+    select: { version: true, origin: true, changeSummary: true, createdAt: true, createdBy: { select: { fullName: true } } },
+  });
+  const [a, b] = await Promise.all([getDocumentVersion(actor, id, from), getDocumentVersion(actor, id, to)]);
+  const diffs = diffSections(a.content.sections, b.content.sections);
+  return {
+    caseReference: doc.caseFile.reference,
+    type: doc.type as DocumentTypeKey,
+    currentVersion: doc.currentVersion,
+    validatedVersion: doc.validatedVersion,
+    versions: versions.map((v) => ({ version: v.version, origin: v.origin, changeSummary: v.changeSummary, createdAt: v.createdAt, createdByName: v.createdBy.fullName })),
+    from: { version: a.version, createdAt: a.createdAt, createdByName: a.createdByName, changeSummary: a.changeSummary },
+    to: { version: b.version, createdAt: b.createdAt, createdByName: b.createdByName, changeSummary: b.changeSummary },
+    diffs,
+    stats: diffStats(diffs),
   };
 }
 

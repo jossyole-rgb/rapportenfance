@@ -46,6 +46,7 @@ export type AuditAction =
   | "document.archived"
   | "document.deleted"
   | "retention.purged"
+  | "audit.purged"
   | "access.denied";
 
 export type AuditEntry = {
@@ -117,5 +118,6 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "document.archived": "Écrit archivé",
   "document.deleted": "Écrit supprimé",
   "retention.purged": "Purge de conservation",
+  "audit.purged": "Purge du journal d'audit",
   "access.denied": "Accès refusé",
 };

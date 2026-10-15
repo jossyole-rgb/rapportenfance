@@ -13,7 +13,7 @@ export function LoginForm({ next }: { next?: string }) {
       <FormFeedback state={state} />
       <input type="hidden" name="next" value={next ?? ""} />
       <Field label="Adresse e-mail professionnelle" htmlFor="email" required>
-        <Input id="email" name="email" type="email" autoComplete="username" required autoFocus />
+        <Input id="email" name="email" type="email" autoComplete="username" required autoFocus key={state?.email} defaultValue={state?.email} />
       </Field>
       <Field label="Mot de passe" htmlFor="password" required>
         <Input id="password" name="password" type="password" autoComplete="current-password" required />

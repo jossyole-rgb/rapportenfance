@@ -5,7 +5,7 @@ import { Checkbox, Field, Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormFeedback } from "@/components/form-feedback";
 
-export function SettingsForm({ org }: { org: { name: string; headerLine1: string | null; headerLine2: string | null; headerLine3: string | null; validationMode: string; retentionDays: number; mfaRequired: boolean } }) {
+export function SettingsForm({ org }: { org: { name: string; headerLine1: string | null; headerLine2: string | null; headerLine3: string | null; validationMode: string; retentionDays: number; mfaRequired: boolean; auditRetentionDays: number } }) {
   const [state, action] = useActionState(updateOrgSettingsAction, undefined);
   const fe = state?.fieldErrors ?? {};
   return (
@@ -28,6 +28,9 @@ export function SettingsForm({ org }: { org: { name: string; headerLine1: string
       </Field>
       <Field label="Durée de conservation des documents archivés (jours)" htmlFor="retentionDays" required error={fe.retentionDays} hint="À définir avec votre DPO. Au-delà, les documents archivés sont supprimés par la purge de conservation.">
         <Input id="retentionDays" name="retentionDays" type="number" min={30} max={36500} defaultValue={org.retentionDays} required />
+      </Field>
+      <Field label="Durée de conservation du journal d'audit (jours)" htmlFor="auditRetentionDays" required error={fe.auditRetentionDays} hint="Traces de connexion, de consultation et d'action. À définir avec votre DPO (souvent entre 6 mois et 1 an). Les entrées plus anciennes sont supprimées par la tâche planifiée.">
+        <Input id="auditRetentionDays" name="auditRetentionDays" type="number" min={90} max={3650} defaultValue={org.auditRetentionDays} required />
       </Field>
       <div>
         <Checkbox name="mfaRequired" label="Exiger la double authentification pour tous les utilisateurs" defaultChecked={org.mfaRequired} />

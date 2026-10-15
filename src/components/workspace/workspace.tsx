@@ -708,6 +708,15 @@ function VersionsPanel(props: WorkspaceProps) {
               <Link href={`/ecrits/${props.documentId}/versions/${v.version}`} className="text-sm font-medium text-brand-700 hover:underline">
                 Consulter
               </Link>
+              {v.version !== props.currentVersion && (
+                <Link
+                  href={`/ecrits/${props.documentId}/comparer?de=${v.version}&a=${props.currentVersion}`}
+                  className="text-sm font-medium text-brand-700 hover:underline"
+                  aria-label={`Comparer la version ${v.version} avec la version actuelle`}
+                >
+                  Comparer
+                </Link>
+              )}
               {props.permissions.edit && v.version !== props.currentVersion && (
                 <form action={action}>
                   <input type="hidden" name="documentId" value={props.documentId} />
