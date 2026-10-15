@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-brand-50: #eef4fb;
+  --color-brand-100: #d9e6f5;
+  --color-brand-200: #b6cdea;
+  --color-brand-500: #3a6ea8;
+  --color-brand-600: #2b5a8f;
+  --color-brand-700: #224a77;
+  --color-brand-800: #1b3a5e;
+  --color-brand-900: #142b46;
+  --color-ok-50: #ecfdf3;
+  --color-ok-600: #15803d;
+  --color-ok-700: #166534;
+  --color-warn-50: #fff7ed;
+  --color-warn-500: #f59e0b;
+  --color-warn-700: #b45309;
+  --color-err-50: #fef2f2;
+  --color-err-600: #dc2626;
+  --color-err-700: #b91c1c;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+  ::selection {
+    @apply bg-brand-100;
+  }
+}
+
+/* Marquage des passages vérifiés dans l'aperçu */
+.claim-GREEN { @apply decoration-ok-600/40; }
+.claim-ORANGE { @apply bg-warn-50 underline decoration-warn-500 decoration-2 underline-offset-4; }
+.claim-RED { @apply bg-err-50 underline decoration-err-600 decoration-wavy decoration-2 underline-offset-4; }

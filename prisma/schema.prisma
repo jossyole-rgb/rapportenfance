@@ -1,0 +1,270 @@
+// RapportEnfance IA - schéma de données du MVP
+//
+// Conventions de sécurité :
+// - toute donnée métier appartient à une organisation (organizationId) : isolation multi-établissements ;
+// - les champs suffixés "Enc" sont chiffrés au niveau applicatif (AES-256-GCM, voir src/lib/security/crypto.ts) ;
+// - les journaux d'audit ne contiennent jamais le contenu des notes ou des rapports.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PROFESSIONAL // Professionnel : crée et rédige les écrits de ses dossiers
+  VALIDATOR // Validateur / chef de service : relit et valide les écrits de l'établissement
+  ORG_ADMIN // Administrateur établissement : utilisateurs, paramètres, journaux, conservation
+  TECH_ADMIN // Administrateur technique : organisations (aucun accès au contenu des dossiers)
+}
+
+enum ValidationMode {
+  SELF // l'auteur peut valider son propre écrit après confirmation de relecture
+  SUPERVISOR // validation réservée à un validateur distinct de l'auteur
+}
+
+enum DocumentType {
+  NOTE_ENTRETIEN
+  COMPTE_RENDU_VISITE
+  VISITE_DOMICILE
+  VISITE_MEDIATISEE
+  NOTE_SITUATION
+  RAPPORT_EDUCATIF
+  RAPPORT_EVOLUTION
+  SYNTHESE
+  EVALUATION_SITUATION
+  RAPPORT_ASE
+  RAPPORT_MAGISTRAT
+  INFORMATION_PREOCCUPANTE
+}
+
+enum DocumentStatus {
+  DRAFT // Brouillon
+  GENERATED // Généré
+  TO_REVIEW // À vérifier
+  REVIEWED // Relu
+  VALIDATED // Validé
+  EXPORTED // Exporté
+  ARCHIVED // Archivé
+}
+
+enum CaseFileStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Organization {
+  id                   String         @id @default(cuid())
+  name                 String
+  slug                 String         @unique
+  // En-tête institutionnel des exports
+  headerLine1          String?
+  headerLine2          String?
+  headerLine3          String?
+  validationMode       ValidationMode @default(SUPERVISOR)
+  // Durée de conservation (jours) des documents archivés avant purge
+  retentionDays        Int            @default(1825)
+  isActive             Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  users       User[]
+  caseFiles   CaseFile[]
+  documents   Document[]
+  auditLogs   AuditLog[]
+  invitations Invitation[]
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  email              String        @unique
+  fullName           String
+  jobTitle           String?
+  serviceName        String?
+  passwordHash       String
+  roles              Role[]
+  isActive           Boolean       @default(true)
+  failedLoginCount   Int           @default(0)
+  lockedUntil        DateTime?
+  passwordChangedAt  DateTime      @default(now())
+  lastLoginAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  sessions            Session[]
+  resetTokens         PasswordResetToken[]
+  caseFileMemberships CaseFileMember[]
+  createdCaseFiles    CaseFile[]           @relation("CaseFileCreator")
+  authoredDocuments   Document[]           @relation("DocumentAuthor")
+  validatedDocuments  Document[]           @relation("DocumentValidator")
+  versions            DocumentVersion[]
+
+  @@index([organizationId])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  // Seule l'empreinte SHA-256 du jeton est stockée
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  userAgent  String?
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  fullName       String
+  jobTitle       String?
+  roles          Role[]
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+model CaseFile {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  // Identifiant de dossier : doit être pseudonyme (pas de nom complet)
+  reference      String
+  // Prénom ou initiales utilisés dans les notes (chiffré)
+  childAliasEnc  String?
+  serviceName    String?
+  status         CaseFileStatus @default(ACTIVE)
+  createdById    String
+  createdBy      User           @relation("CaseFileCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  members   CaseFileMember[]
+  documents Document[]
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, status])
+}
+
+model CaseFileMember {
+  caseFileId String
+  caseFile   CaseFile @relation(fields: [caseFileId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@id([caseFileId, userId])
+  @@index([userId])
+}
+
+model Document {
+  id                 String         @id @default(cuid())
+  organizationId     String
+  organization       Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  caseFileId         String
+  caseFile           CaseFile       @relation(fields: [caseFileId], references: [id], onDelete: Restrict)
+  type               DocumentType
+  status             DocumentStatus @default(DRAFT)
+  authorId           String
+  author             User           @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  // Informations du professionnel (instantané au moment de la rédaction)
+  authorName         String
+  authorJobTitle     String?
+  serviceName        String?
+
+  // Rendez-vous
+  meetingDate        DateTime       @db.Date
+  meetingTime        String?
+  meetingLocationEnc String?
+  interviewType      String?
+  purposeEnc         String?
+  attendeesEnc       String?
+  recipient          String?
+
+  // Notes professionnelles sources (chiffrées)
+  notesEnc           String
+
+  currentVersion     Int            @default(0)
+  validatedById      String?
+  validatedBy        User?          @relation("DocumentValidator", fields: [validatedById], references: [id], onDelete: Restrict)
+  validatedAt        DateTime?
+  validatedVersion   Int?
+  reviewedAt         DateTime?
+  reviewedById       String?
+  firstExportedAt    DateTime?
+  archivedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  versions DocumentVersion[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, type])
+  @@index([organizationId, authorId])
+  @@index([caseFileId])
+}
+
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version       Int
+  // Contenu du rapport (rubriques, accusés de vérification) - JSON chiffré
+  contentEnc    String
+  // Résultat de l'analyse des notes (segments classés) - JSON chiffré
+  analysisEnc   String?
+  origin        String // GENERATED | MANUAL | RESTORED
+  engine        String?
+  changeSummary String?
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+
+  @@unique([documentId, version])
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actorId        String?
+  actorEmail     String?
+  action         String
+  resourceType   String?
+  resourceId     String?
+  // Métadonnées techniques uniquement (jamais de contenu de notes ou de rapport)
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorId])
+}
