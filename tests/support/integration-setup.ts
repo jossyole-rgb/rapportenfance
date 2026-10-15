@@ -13,8 +13,6 @@ if (!process.env.DATABASE_URL.includes("_test")) throw new Error("Les tests d'in
 beforeAll(async () => {
   const { db } = await import("@/lib/db");
   await db.$executeRawUnsafe(
-    'TRUNCATE "AuditLog","DocumentVersion","Document","CaseFileMember","CaseFile","Invitation","PasswordResetToken","Session","User","Organization" CASCADE',
+    'TRUNCATE "AuditLog","DocumentVersion","Document","CaseFileMember","CaseFile","Invitation","PasswordResetToken","Session","MfaChallenge","RateLimitBucket","User","Organization" CASCADE',
   );
-  const { resetRateLimits } = await import("@/lib/rate-limit");
-  resetRateLimits();
 });

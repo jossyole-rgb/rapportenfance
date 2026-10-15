@@ -13,6 +13,12 @@ export type AuditAction =
   | "auth.password_reset"
   | "auth.password_changed"
   | "auth.invitation_accepted"
+  | "auth.mfa_failed"
+  | "auth.mfa_enabled"
+  | "auth.mfa_disabled"
+  | "auth.mfa_reset"
+  | "auth.recovery_code_used"
+  | "auth.recovery_codes_regenerated"
   | "user.invited"
   | "user.updated"
   | "user.deactivated"
@@ -78,6 +84,12 @@ export const AUDIT_LABELS: Record<AuditAction, string> = {
   "auth.password_reset": "Mot de passe réinitialisé",
   "auth.password_changed": "Mot de passe modifié",
   "auth.invitation_accepted": "Invitation acceptée",
+  "auth.mfa_failed": "Code de double authentification refusé",
+  "auth.mfa_enabled": "Double authentification activée",
+  "auth.mfa_disabled": "Double authentification désactivée",
+  "auth.mfa_reset": "Double authentification réinitialisée par un administrateur",
+  "auth.recovery_code_used": "Code de secours utilisé",
+  "auth.recovery_codes_regenerated": "Codes de secours régénérés",
   "user.invited": "Utilisateur invité",
   "user.updated": "Utilisateur modifié",
   "user.deactivated": "Utilisateur désactivé",

@@ -11,7 +11,7 @@ RapportEnfance IA transforme les notes prises lors d'un entretien, d'une visite 
 
 | Module | Contenu |
 | --- | --- |
-| Authentification | Connexion, sessions serveur (cookie `HttpOnly`, expiration absolue et par inactivité), déconnexion, mot de passe oublié, inscription sur invitation, verrouillage après échecs, rôles, isolation par établissement |
+| Authentification | Connexion, double authentification TOTP avec codes de secours (obligatoire par défaut), sessions serveur (cookie `HttpOnly`, expiration absolue et par inactivité), déconnexion, mot de passe oublié, inscription sur invitation, verrouillage après échecs, rôles, isolation par établissement |
 | Tableau de bord | Brouillons, écrits à vérifier, à valider, validés, activité récente, raccourcis |
 | Dossiers | Identifiant pseudonyme, prénom utilisé dans les notes (chiffré), membres du dossier, archivage |
 | Création d'un écrit | 12 types d'écrits du cahier des charges, informations du professionnel et du rendez-vous, grande zone de notes |
@@ -48,15 +48,26 @@ Ouvrir http://localhost:3000. Comptes de démonstration (mot de passe commun `De
 | educateur@mecs.demo.rapportenfance.fr | Professionnel d'un **autre** établissement (test d'isolation) |
 | tech@demo.rapportenfance.fr | Administrateur technique |
 
-Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md).
+Les établissements de démonstration n'exigent pas la double authentification (activable dans **Paramètres**) ; tout nouvel établissement l'exige.
+
+Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md). Déploiement conteneurisé (`Dockerfile`, `docker-compose.yml`) : [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md).
+
+## Commandes d'exploitation
+
+| Commande | Rôle |
+| --- | --- |
+| `npm run admin -- create-tech-admin --email … --name "…"` | Amorçage : premier administrateur technique (lien de définition du mot de passe) |
+| `npm run admin -- reset-mfa --email …` / `unlock --email …` | Téléphone perdu / déverrouillage |
+| `npm run retention:purge` | Purge de conservation et nettoyage technique (à planifier chaque nuit) |
+| `npm run keys:generate` / `keys:reencrypt` | Clé de chiffrement / ré-chiffrement après rotation |
 
 ## Tests
 
 ```bash
 npm run lint && npm run typecheck
-npm run test:unit          # moteur, vérificateur, chiffrement, permissions, workflow
-npm run test:integration   # services sur base PostgreSQL *_test : isolation, workflow, exports, auth
-npm run test:e2e           # Playwright : parcours complet, isolation, tablette (serveur lancé + seed)
+npm run test:unit          # moteur, vérificateur, chiffrement, double authentification, permissions, workflow
+npm run test:integration   # services sur base PostgreSQL *_test : isolation, workflow, exports, auth, rotation de clé
+npm run test:e2e           # Playwright : parcours complet, double authentification, isolation, tablette (serveur lancé + seed)
 ```
 
 ## Documentation

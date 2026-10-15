@@ -1,12 +1,19 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { acceptInvitation, authenticate, changePassword, logoutSession, requestPasswordReset, resetPassword } from "@/lib/services/auth-service";
-import { clearSessionCookie, createSessionRecord, getCurrentSession, requestMeta, setSessionCookie } from "@/lib/auth/session";
-import { getCurrentUser } from "@/lib/auth/guard";
+import { createMfaChallenge, verifyMfaChallenge } from "@/lib/services/mfa-service";
+import { clearSessionCookie, createSessionRecord, getCurrentSession, MFA_COOKIE, requestMeta, setSessionCookie } from "@/lib/auth/session";
+import { getCurrentUser, MFA_SETUP_PATH } from "@/lib/auth/guard";
+import { needsMfaSetup } from "@/lib/auth/mfa-policy";
 import { toActionError } from "@/lib/errors";
 
-export type FormState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; message?: string } | undefined;
+export type FormState =
+  | { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; message?: string; codes?: string[] }
+  | undefined;
+
+const isProd = () => process.env.NODE_ENV === "production";
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -16,15 +23,41 @@ const str = (fd: FormData, k: string) => {
 const homeFor = (roles: string[]) =>
   roles.includes("PROFESSIONAL") || roles.includes("VALIDATOR") ? "/tableau-de-bord" : roles.includes("ORG_ADMIN") ? "/admin/utilisateurs" : "/plateforme";
 
+const safeNext = (next: string | null | undefined) => (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : null);
+
 export async function loginAction(_: FormState, fd: FormData): Promise<FormState> {
   const meta = await requestMeta();
   let target: string;
   try {
     const user = await authenticate(str(fd, "email"), str(fd, "password"), meta);
-    const { token, expiresAt } = await createSessionRecord(user.id, meta.userAgent);
+    const next = safeNext(str(fd, "next"));
+    if (user.totpEnabledAt) {
+      // Mot de passe correct : le second facteur est demandé avant toute ouverture de session
+      const { token, expiresAt } = await createMfaChallenge(user.id, next);
+      (await cookies()).set(MFA_COOKIE(), token, { httpOnly: true, secure: isProd(), sameSite: "strict", path: "/", expires: expiresAt });
+      target = "/connexion/verification";
+    } else {
+      const { token, expiresAt } = await createSessionRecord(user.id, meta.userAgent);
+      await setSessionCookie(token, expiresAt);
+      target = needsMfaSetup(user) ? MFA_SETUP_PATH : next ?? homeFor(user.roles);
+    }
+  } catch (e) {
+    return toActionError(e);
+  }
+  redirect(target);
+}
+
+export async function verifyMfaAction(_: FormState, fd: FormData): Promise<FormState> {
+  const meta = await requestMeta();
+  const jar = await cookies();
+  let target: string;
+  try {
+    const result = await verifyMfaChallenge(jar.get(MFA_COOKIE())?.value ?? "", str(fd, "code"), meta);
+    jar.delete(MFA_COOKIE());
+    const { token, expiresAt } = await createSessionRecord(result.user.id, meta.userAgent);
     await setSessionCookie(token, expiresAt);
-    const next = str(fd, "next");
-    target = next.startsWith("/") && !next.startsWith("//") ? next : homeFor(user.roles);
+    target = safeNext(result.nextPath) ?? homeFor(result.user.roles);
+    if (result.method === "recovery") target = `/compte?codes-restants=${result.remainingRecoveryCodes}`;
   } catch (e) {
     return toActionError(e);
   }

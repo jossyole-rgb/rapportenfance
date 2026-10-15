@@ -19,3 +19,15 @@ export async function purgeExpiredDocuments(db: PrismaClient, now = new Date(), 
   }
   return total;
 }
+
+/** Supprime les enregistrements techniques expirés (sessions, vérifications, jetons, compteurs de débit). */
+export async function purgeTechnicalRecords(db: PrismaClient, now = new Date()): Promise<number> {
+  const dayAgo = new Date(now.getTime() - 86400_000);
+  const results = await db.$transaction([
+    db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
+    db.mfaChallenge.deleteMany({ where: { expiresAt: { lt: now } } }),
+    db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: dayAgo } }, { usedAt: { lt: dayAgo } }] } }),
+    db.rateLimitBucket.deleteMany({ where: { windowStart: { lt: dayAgo } } }),
+  ]);
+  return results.reduce((n, r) => n + r.count, 0);
+}

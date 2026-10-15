@@ -8,14 +8,21 @@ Le MVP couvre les modules demandés : authentification et rôles, tableau de bor
 
 Le « moteur IA » livré est un **moteur local déterministe** (`local-rules-v1`) : il analyse, classe, structure et attribue les notes, sans reformulation libre. Il ne peut donc pas inventer, mais le style reste proche des notes. Un modèle de langage peut être branché derrière la même interface une fois le cadre juridique validé (voir plus bas).
 
+## Mise à jour du 15/10/2026 (après-midi)
+
+Joss a délégué la gestion du projet. Décisions prises dans ce cadre, toutes réversibles et sans dépense : double authentification **obligatoire par défaut** pour tout nouvel établissement et pour l'administration technique (désactivée uniquement sur les établissements de démonstration fictifs) ; mode de validation par défaut « chef de service » ; durée de conservation par défaut inchangée (1 825 jours, à confirmer par le DPO). Ajouts : double authentification TOTP avec codes de secours, amorçage de production, limitation de débit partagée en base (seuls les échecs sont comptés par adresse IP), ré-chiffrement après rotation de clé, nettoyage technique planifié, image Docker et Docker Compose vérifiés.
+
+Non fait car hors délégation technique : création d'un dépôt GitHub (aucun dépôt RapportEnfance n'existe sur le compte et je ne crée pas de dépôt moi-même), choix d'un hébergeur payant, choix d'un fournisseur IA, et toute validation juridique.
+
 ## Résultats des tests (15/10/2026)
 
 | Suite | Résultat | Contenu |
 | --- | --- | --- |
 | Lint (eslint) et typage (TypeScript strict) | ✅ sans erreur ni avertissement | |
-| Unitaires (Vitest) | ✅ 16/16 | Exemple du cahier des charges, cas § 9.3 (passage non étayé en rouge), citation / date / diagnostic / attribution inventés détectés en rouge, reformulation en orange ; chiffrement et rotation de clé ; politique de mot de passe ; machine à états ; matrice de permissions ; découpage des phrases |
-| Intégration (Vitest + PostgreSQL réel) | ✅ 15/15 | Isolation entre établissements ; chiffrement effectif en base ; accès limité aux membres du dossier ; administrateur sans accès au contenu ; journal d'audit sans données sensibles ; workflow complet ; export définitif refusé avant validation ; marquage brouillon ; rubriques « [À compléter] » bloquantes ; purge de conservation ; connexion, verrouillage, désactivation, expiration d'inactivité, réinitialisation, invitation |
-| Bout en bout (Playwright, build de production) | ✅ 5/5 | Parcours éducatrice → génération → correction → relecture → validation par la cheffe de service → téléchargement PDF et DOCX ; isolation d'un autre établissement ; administrateur technique refusé ; redirection vers la connexion ; utilisation sur tablette (820×1180) |
+| Unitaires (Vitest) | ✅ 21/21 | Double authentification (vecteurs officiels RFC 6238, tolérance d'horloge, anti-rejeu, codes de secours, politique) ; exemple du cahier des charges, cas § 9.3 (passage non étayé en rouge), citation / date / diagnostic / attribution inventés détectés en rouge, reformulation en orange ; chiffrement et rotation de clé ; politique de mot de passe ; machine à états ; matrice de permissions ; découpage des phrases |
+| Intégration (Vitest + PostgreSQL réel) | ✅ 27/27 | Double authentification (secret chiffré, mot de passe seul insuffisant, rejeu refusé, code de secours à usage unique, verrouillage, désactivation, réinitialisation par l'administrateur) ; limitation de débit partagée y compris sous requêtes concurrentes ; rotation et ré-chiffrement de clé ; nettoyage technique ; isolation entre établissements ; chiffrement effectif en base ; accès limité aux membres du dossier ; administrateur sans accès au contenu ; journal d'audit sans données sensibles ; workflow complet ; export définitif refusé avant validation ; marquage brouillon ; rubriques « [À compléter] » bloquantes ; purge de conservation ; connexion, verrouillage, désactivation, expiration d'inactivité, réinitialisation, invitation |
+| Bout en bout (Playwright, build de production) | ✅ 6/6 (3 exécutions consécutives) | Activation de la double authentification, connexion avec code, code de secours, réinitialisation par l'administrateur ; parcours éducatrice → génération → correction → relecture → validation par la cheffe de service → téléchargement PDF et DOCX ; isolation d'un autre établissement ; administrateur technique refusé ; redirection vers la connexion ; utilisation sur tablette (820×1180) |
+| Conteneur (Docker Compose) | ✅ | Construction, migrations au démarrage, amorçage, activation forcée de la double authentification et reconnexion, sur système de fichiers en lecture seule |
 | Dépendances (`npm audit --omit=dev`) | ✅ 0 vulnérabilité | Alertes restantes limitées à l'outillage de développement (eslint) |
 | Contrôle visuel | ✅ | Écrans principaux et PDF brouillon / validé vérifiés sur captures |
 
@@ -26,6 +33,7 @@ Commandes : voir [INSTALLATION.md](INSTALLATION.md#6-tests).
 | Module | État | Remarques |
 | --- | --- | --- |
 | Authentification, sessions, déconnexion, mot de passe oublié, invitation | ✅ | Argon2id, verrouillage, sessions révocables, expiration par inactivité |
+| Double authentification (TOTP) | ✅ | Obligatoire par défaut, codes de secours, réinitialisation par l'administrateur |
 | Rôles (professionnel, validateur, admin établissement, admin technique) et contrôle d'accès serveur | ✅ | Rôles cumulables ; isolation par établissement et par dossier |
 | Tableau de bord | ✅ | Brouillons, à vérifier, à valider, validés, activité récente |
 | Dossiers et membres | ✅ | Identifiant pseudonyme, prénom chiffré, archivage |
@@ -47,10 +55,7 @@ Commandes : voir [INSTALLATION.md](INSTALLATION.md#6-tests).
 - **Style rédactionnel** : le moteur local ne reformule pas ; les phrases restent proches des notes (attribuées et ponctuées). La qualité « rapport fini » demandera un modèle de langage, soumis aux validations ci-dessous.
 - **Aucun fournisseur IA externe branché** (volontairement).
 - **Trames institutionnelles** définies dans le code ; pas encore d'éditeur pour l'établissement.
-- **Pas d'authentification à deux facteurs.**
-- **Limitation de débit en mémoire** (une seule instance) ; le verrouillage de compte, lui, est en base.
 - **Comparaison visuelle de versions**, workflow multi-validateurs, dictée vocale, synthèses multi-écrits, API métier : feuille de route.
-- **Amorçage de production** (création du premier administrateur technique sans le jeu de démonstration) : à écrire avant le premier déploiement réel.
 - Sans serveur SMTP, les e-mails sont écrits localement (refusé en production).
 
 Détail et priorités : [FEUILLE_DE_ROUTE.md](FEUILLE_DE_ROUTE.md).
@@ -73,7 +78,7 @@ Ces points ne relèvent pas du développement et **conditionnent toute utilisati
 
 ## Décisions à prendre par le porteur de projet
 
-1. Création ou rattachement d'un **dépôt Git** pour versionner et partager le code (aujourd'hui dans les fichiers du projet, historique Git local inclus).
+1. Création d'un **dépôt GitHub** vide (privé recommandé) sur votre compte, pour que j'y pousse le code et son historique (aujourd'hui dans les fichiers du projet, historique Git local inclus).
 2. Choix et budget de l'**hébergement** de démonstration puis de production.
 3. Choix d'un **fournisseur de modèle de langage** (ou d'un modèle auto-hébergé), après les validations 1 à 3.
 4. Constitution du **groupe de testeurs** professionnels.

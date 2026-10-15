@@ -7,13 +7,15 @@ Légende : ✅ en place et testé · ☑️ en place, non couvert par un test au
 - ✅ Mots de passe hachés en Argon2id (paramètres OWASP), jamais stockés ni journalisés en clair.
 - ✅ Politique : 12 caractères minimum, 3 types de caractères, différent de l'e-mail.
 - ✅ Verrouillage 15 min après 5 échecs ; messages d'erreur génériques ; temps de réponse égalisé (pas d'énumération de comptes).
-- ☑️ Limitation de débit par IP sur la connexion et la demande de réinitialisation (en mémoire).
+- ✅ Limitation de débit partagée entre instances (PostgreSQL, incrément atomique) : 50 échecs par adresse IP en 15 min, toutes tentatives confondues ; les connexions réussies ne sont pas comptées (une équipe derrière une même adresse n'est pas bloquée).
 - ✅ Sessions en base, jeton aléatoire 256 bits dont seule l'empreinte SHA-256 est stockée ; cookie `HttpOnly`, `SameSite=Lax`, `Secure` et préfixe `__Host-` en production.
 - ✅ Expiration absolue (10 h) et par inactivité (30 min).
 - ✅ Révocation des sessions au changement / à la réinitialisation du mot de passe, à la désactivation du compte ou de l'établissement.
 - ✅ Réinitialisation par jeton à usage unique, durée 1 h, empreinte seule stockée.
 - ✅ Inscription uniquement sur invitation nominative (7 jours, usage unique).
-- ⬜ Authentification à deux facteurs (fortement recommandée avant données réelles ; feuille de route).
+- ✅ Double authentification TOTP (RFC 6238, application d'authentification du téléphone), implémentée localement sans service tiers : secret chiffré en base, anti-rejeu, 8 codes de secours à usage unique (empreintes seules), échecs comptés dans le verrouillage du compte.
+- ✅ Obligatoire par défaut pour chaque nouvel établissement et pour l'administration technique ; tant qu'elle n'est pas activée, aucune page ni action n'est accessible. Réinitialisation par l'administrateur de l'établissement (sessions fermées), tracée.
+- ✅ Amorçage de production sans mot de passe en ligne de commande (lien de définition à usage unique).
 
 ## Contrôle d'accès
 
@@ -36,7 +38,7 @@ Légende : ✅ en place et testé · ☑️ en place, non couvert par un test au
 - ✅ Aucune donnée transmise à un service tiers : moteur de rédaction local, exports générés sur le serveur, pas de police, script ou traceur externe.
 - ✅ Jeux de données de démonstration 100 % fictifs ; seed refusé en production.
 - ⬜ Chiffrement au repos de la base et des sauvegardes côté hébergeur (dépend de l'hébergeur retenu).
-- ⬜ Ré-chiffrement en masse lors d'une rotation de clé.
+- ✅ Ré-chiffrement en masse après rotation de clé (`npm run keys:reencrypt`, mode simulation), vérifié par test.
 - ⬜ Export des données d'une personne / droit d'accès (procédure à définir avec le DPO).
 
 ## Sécurité web

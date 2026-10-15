@@ -1,11 +1,11 @@
 "use client";
 import { useActionState } from "react";
 import { updateOrgSettingsAction } from "@/app/actions/admin";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Checkbox, Field, Input, Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormFeedback } from "@/components/form-feedback";
 
-export function SettingsForm({ org }: { org: { name: string; headerLine1: string | null; headerLine2: string | null; headerLine3: string | null; validationMode: string; retentionDays: number } }) {
+export function SettingsForm({ org }: { org: { name: string; headerLine1: string | null; headerLine2: string | null; headerLine3: string | null; validationMode: string; retentionDays: number; mfaRequired: boolean } }) {
   const [state, action] = useActionState(updateOrgSettingsAction, undefined);
   const fe = state?.fieldErrors ?? {};
   return (
@@ -29,6 +29,10 @@ export function SettingsForm({ org }: { org: { name: string; headerLine1: string
       <Field label="Durée de conservation des documents archivés (jours)" htmlFor="retentionDays" required error={fe.retentionDays} hint="À définir avec votre DPO. Au-delà, les documents archivés sont supprimés par la purge de conservation.">
         <Input id="retentionDays" name="retentionDays" type="number" min={30} max={36500} defaultValue={org.retentionDays} required />
       </Field>
+      <div>
+        <Checkbox name="mfaRequired" label="Exiger la double authentification pour tous les utilisateurs" defaultChecked={org.mfaRequired} />
+        <p className="mt-1 text-xs text-slate-500">Fortement recommandé dès que des données réelles sont traitées. Les utilisateurs sans double authentification devront l&apos;activer à leur prochaine page.</p>
+      </div>
       <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
     </form>
   );

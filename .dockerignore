@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+.dev-mailbox
+test-results
+playwright-report
+tsconfig.tsbuildinfo
+docker/*.env

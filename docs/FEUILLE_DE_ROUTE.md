@@ -7,10 +7,7 @@ Ce document liste ce qui **n'est pas** dans le MVP. Les priorités sont proposé
 | Sujet | Contenu | Dépendance |
 | --- | --- | --- |
 | Validations externes | DPO, AIPD, hébergeur, contrats : voir [RAPPORT.md](RAPPORT.md#validations-externes-requises) | décision porteur de projet |
-| Authentification à deux facteurs | TOTP ou clé de sécurité, obligatoire pour validateurs et administrateurs | – |
-| Amorçage de production | commande ponctuelle et tracée de création du premier administrateur technique (le seed de démonstration est refusé en production) | – |
-| Limitation de débit partagée | stockage commun (PostgreSQL ou Redis) pour plusieurs instances | choix d'hébergement |
-| Ré-chiffrement après rotation de clé | script de migration des valeurs chiffrées vers la clé courante | – |
+| Clés de sécurité matérielles (WebAuthn / passkeys) | en complément du TOTP livré, pour les validateurs et administrateurs | – |
 | Test d'intrusion | audit indépendant | budget |
 | Procédures RGPD | droit d'accès, rectification, registre, gestion des violations | DPO |
 
@@ -33,6 +30,10 @@ Ce document liste ce qui **n'est pas** dans le MVP. Les priorités sont proposé
 - Rappels et échéances (date de rapport attendue, relances de validation).
 - Mode pseudonymisé renforcé (remplacement automatique des noms détectés dans les notes avant traitement).
 - Administration multi-établissements (groupement, association gestionnaire).
+
+## Livré depuis la première version (15/10/2026)
+
+Double authentification TOTP, amorçage de production, limitation de débit partagée, ré-chiffrement après rotation de clé, image Docker et Docker Compose.
 
 ## Dette technique identifiée
 

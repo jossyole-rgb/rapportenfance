@@ -35,10 +35,14 @@ tests/                  unit, integration, e2e
 
 ## Modèle de données
 
-`Organization` 1—n `User` (rôles multiples) · `Organization` 1—n `CaseFile` (dossier) n—n `User` via `CaseFileMember` · `CaseFile` 1—n `Document` (écrit) 1—n `DocumentVersion` (immuable) · `AuditLog` · `Session`, `PasswordResetToken`, `Invitation` (seules les empreintes SHA-256 des jetons sont stockées).
+`Organization` 1—n `User` (rôles multiples) · `Organization` 1—n `CaseFile` (dossier) n—n `User` via `CaseFileMember` · `CaseFile` 1—n `Document` (écrit) 1—n `DocumentVersion` (immuable) · `AuditLog` · `Session`, `MfaChallenge`, `PasswordResetToken`, `Invitation` (seules les empreintes SHA-256 des jetons sont stockées) · `RateLimitBucket` (compteurs de débit partagés).
 
-Champs chiffrés (suffixe `Enc`) : `Document.notesEnc`, `purposeEnc`, `attendeesEnc`, `meetingLocationEnc`, `CaseFile.childAliasEnc`, `DocumentVersion.contentEnc`, `analysisEnc`.
+Champs chiffrés (suffixe `Enc`) : `Document.notesEnc`, `purposeEnc`, `attendeesEnc`, `meetingLocationEnc`, `CaseFile.childAliasEnc`, `DocumentVersion.contentEnc`, `analysisEnc`, `User.totpSecretEnc`.
 Champs en clair, consultables pour la recherche : identifiant de dossier (doit être pseudonyme), type, statut, dates, auteur.
+
+## Connexion et double authentification
+
+Mot de passe → si TOTP actif : vérification `MfaChallenge` (cookie dédié de 5 min, 5 essais) → session. Si l'établissement exige la double authentification et qu'elle n'est pas activée, `getCurrentUser` renvoie `null` (aucune page ni action accessible) et `requireUser` redirige vers `/double-authentification`. TOTP implémenté localement (`src/lib/security/totp.ts`), QR code généré sur le serveur.
 
 ## Contrôle d'accès
 

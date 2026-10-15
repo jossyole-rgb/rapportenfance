@@ -17,7 +17,7 @@ export async function listOrgUsers(actor: Actor) {
     db.user.findMany({
       where: { organizationId: actor.organizationId! },
       orderBy: { fullName: "asc" },
-      select: { id: true, email: true, fullName: true, jobTitle: true, roles: true, isActive: true, lastLoginAt: true, lockedUntil: true },
+      select: { id: true, email: true, fullName: true, jobTitle: true, roles: true, isActive: true, lastLoginAt: true, lockedUntil: true, totpEnabledAt: true },
     }),
     db.invitation.findMany({
       where: { organizationId: actor.organizationId!, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -72,6 +72,7 @@ const orgSettingsSchema = z.object({
   headerLine3: z.string().trim().max(160).optional(),
   validationMode: z.enum(["SELF", "SUPERVISOR"]),
   retentionDays: z.coerce.number().int().min(30, "30 jours minimum.").max(36500),
+  mfaRequired: z.boolean(),
 });
 
 export async function getOrgSettings(actor: Actor) {
@@ -88,7 +89,7 @@ export async function updateOrgSettings(actor: Actor, raw: unknown) {
     where: { id: actor.organizationId! },
     data: { ...d, headerLine1: d.headerLine1 || null, headerLine2: d.headerLine2 || null, headerLine3: d.headerLine3 || null },
   });
-  await audit({ action: "organization.updated", organizationId: actor.organizationId, actorId: actor.id, resourceType: "organization", resourceId: actor.organizationId!, metadata: { validationMode: d.validationMode, retentionDays: d.retentionDays } });
+  await audit({ action: "organization.updated", organizationId: actor.organizationId, actorId: actor.id, resourceType: "organization", resourceId: actor.organizationId!, metadata: { validationMode: d.validationMode, retentionDays: d.retentionDays, mfaRequired: d.mfaRequired } });
 }
 
 // ---------------------------------------------------------------------------------------------

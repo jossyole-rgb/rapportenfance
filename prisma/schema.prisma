@@ -67,6 +67,8 @@ model Organization {
   validationMode       ValidationMode @default(SUPERVISOR)
   // Durée de conservation (jours) des documents archivés avant purge
   retentionDays        Int            @default(1825)
+  // Double authentification obligatoire pour les utilisateurs de l'établissement
+  mfaRequired          Boolean        @default(true)
   isActive             Boolean        @default(true)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
@@ -93,10 +95,17 @@ model User {
   lockedUntil        DateTime?
   passwordChangedAt  DateTime      @default(now())
   lastLoginAt        DateTime?
+  // Double authentification (TOTP, RFC 6238) : secret chiffré, dernier pas accepté (anti-rejeu),
+  // empreintes des codes de secours à usage unique
+  totpSecretEnc      String?
+  totpEnabledAt      DateTime?
+  totpLastStep       Int?
+  recoveryCodeHashes String[]      @default([])
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
   sessions            Session[]
+  mfaChallenges       MfaChallenge[]
   resetTokens         PasswordResetToken[]
   caseFileMemberships CaseFileMember[]
   createdCaseFiles    CaseFile[]           @relation("CaseFileCreator")
@@ -105,6 +114,29 @@ model User {
   versions            DocumentVersion[]
 
   @@index([organizationId])
+}
+
+/// Étape intermédiaire de connexion : mot de passe vérifié, code de double authentification attendu.
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts  Int      @default(0)
+  nextPath  String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+/// Limitation de débit partagée entre instances (fenêtre fixe).
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+
+  @@index([windowStart])
 }
 
 model Session {

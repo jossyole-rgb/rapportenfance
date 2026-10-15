@@ -55,7 +55,10 @@ export async function revokeInvitationAction(fd: FormData) {
 export async function updateOrgSettingsAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await actor();
   try {
-    await updateOrgSettings(user, Object.fromEntries(["name", "headerLine1", "headerLine2", "headerLine3", "validationMode", "retentionDays"].map((k) => [k, str(fd, k)])));
+    await updateOrgSettings(user, {
+      ...Object.fromEntries(["name", "headerLine1", "headerLine2", "headerLine3", "validationMode", "retentionDays"].map((k) => [k, str(fd, k)])),
+      mfaRequired: fd.get("mfaRequired") === "on",
+    });
     revalidatePath("/admin/etablissement");
     return { ok: true, message: "Paramètres enregistrés." };
   } catch (e) {

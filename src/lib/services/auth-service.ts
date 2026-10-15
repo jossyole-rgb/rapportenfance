@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { AppError, invalid } from "@/lib/errors";
 import { checkPasswordPolicy, getDummyHash, hashPassword, verifyPassword } from "@/lib/security/password";
 import { generateToken, hashToken } from "@/lib/security/crypto";
-import { rateLimit } from "@/lib/rate-limit";
+import { isRateLimited, rateLimit } from "@/lib/rate-limit";
 import { sendMail } from "@/lib/mailer";
 import type { RoleKey } from "@/lib/auth/permissions";
 
@@ -13,6 +13,9 @@ export const MAX_FAILED_LOGINS = 5;
 export const LOCK_MINUTES = 15;
 const RESET_TOKEN_MINUTES = 60;
 export const INVITATION_DAYS = 7;
+/** Échecs tolérés par adresse IP (mot de passe ou second facteur), tous comptes confondus, sur 15 minutes. */
+export const LOGIN_FAILURES_PER_IP = 50;
+const IP_WINDOW_MS = 15 * 60_000;
 
 const GENERIC_LOGIN_ERROR = "Adresse e-mail ou mot de passe incorrect.";
 
@@ -22,8 +25,10 @@ const emailSchema = z.string().trim().toLowerCase().email("Adresse e-mail invali
 
 /** Vérifie les identifiants. Messages volontairement génériques pour ne pas révéler l'existence d'un compte. */
 export async function authenticate(emailInput: string, password: string, meta: RequestMeta) {
-  const ipLimit = rateLimit(`login-ip:${meta.ip}`, 30, 15 * 60_000);
-  if (!ipLimit.allowed) throw new AppError("RATE_LIMITED", "Trop de tentatives de connexion. Réessayez dans quelques minutes.");
+  // Seuls les échecs sont comptés par adresse IP (voir recordFailedAttempt et les comptes inconnus)
+  if (await isRateLimited(`login-fail-ip:${meta.ip}`, LOGIN_FAILURES_PER_IP, IP_WINDOW_MS)) {
+    throw new AppError("RATE_LIMITED", "Trop de tentatives de connexion. Réessayez dans quelques minutes.");
+  }
 
   const parsed = emailSchema.safeParse(emailInput);
   if (!parsed.success || !password || password.length > 200) throw new AppError("UNAUTHENTICATED", GENERIC_LOGIN_ERROR);
@@ -32,6 +37,7 @@ export async function authenticate(emailInput: string, password: string, meta: R
   const user = await db.user.findUnique({ where: { email }, include: { organization: true } });
   if (!user) {
     await verifyPassword(await getDummyHash(), password); // temps de réponse homogène
+    await rateLimit(`login-fail-ip:${meta.ip}`, LOGIN_FAILURES_PER_IP, IP_WINDOW_MS);
     await audit({ action: "auth.login_failed", actorEmail: email, ipAddress: meta.ip, metadata: { reason: "unknown_account" } });
     throw new AppError("UNAUTHENTICATED", GENERIC_LOGIN_ERROR);
   }
@@ -43,13 +49,7 @@ export async function authenticate(emailInput: string, password: string, meta: R
 
   const ok = await verifyPassword(user.passwordHash, password);
   if (!ok) {
-    const failed = user.failedLoginCount + 1;
-    const lock = failed >= MAX_FAILED_LOGINS;
-    await db.user.update({
-      where: { id: user.id },
-      data: { failedLoginCount: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : undefined },
-    });
-    await audit({ action: lock ? "auth.locked" : "auth.login_failed", organizationId: user.organizationId, actorId: user.id, ipAddress: meta.ip, metadata: { reason: "bad_password" } });
+    await recordFailedAttempt(user, meta, "bad_password");
     throw new AppError("UNAUTHENTICATED", GENERIC_LOGIN_ERROR);
   }
 
@@ -58,9 +58,35 @@ export async function authenticate(emailInput: string, password: string, meta: R
     throw new AppError("UNAUTHENTICATED", "Ce compte est désactivé. Contactez l'administrateur de votre établissement.");
   }
 
-  await db.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() } });
-  await audit({ action: "auth.login", organizationId: user.organizationId, actorId: user.id, ipAddress: meta.ip });
+  // Le mot de passe est correct. Si la double authentification est active, la connexion n'est
+  // complète qu'après le code (voir mfa-service) : le compteur d'échecs n'est remis à zéro qu'à ce moment.
+  if (!user.totpEnabledAt) await completeLogin(user.id, user.organizationId, meta);
   return user;
+}
+
+/** Dernière étape d'une connexion réussie (après le mot de passe et, le cas échéant, le second facteur). */
+export async function completeLogin(userId: string, organizationId: string | null, meta: RequestMeta, metadata?: Record<string, string>) {
+  await db.user.update({ where: { id: userId }, data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() } });
+  await audit({ action: "auth.login", organizationId, actorId: userId, ipAddress: meta.ip, metadata });
+}
+
+/** Enregistre un échec (mot de passe ou second facteur) et verrouille le compte au-delà du seuil. */
+export async function recordFailedAttempt(user: { id: string; organizationId: string | null; failedLoginCount: number }, meta: RequestMeta, reason: string) {
+  await rateLimit(`login-fail-ip:${meta.ip}`, LOGIN_FAILURES_PER_IP, IP_WINDOW_MS);
+  const failed = user.failedLoginCount + 1;
+  const lock = failed >= MAX_FAILED_LOGINS;
+  await db.user.update({
+    where: { id: user.id },
+    data: { failedLoginCount: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : undefined },
+  });
+  await audit({
+    action: lock ? "auth.locked" : reason === "bad_password" ? "auth.login_failed" : "auth.mfa_failed",
+    organizationId: user.organizationId,
+    actorId: user.id,
+    ipAddress: meta.ip,
+    metadata: { reason },
+  });
+  return lock;
 }
 
 export async function logoutSession(sessionId: string, actor: { id: string; organizationId: string | null }, meta: RequestMeta) {
@@ -70,7 +96,7 @@ export async function logoutSession(sessionId: string, actor: { id: string; orga
 
 /** Demande de réinitialisation : réponse identique que le compte existe ou non. */
 export async function requestPasswordReset(emailInput: string, meta: RequestMeta, appUrl: string) {
-  const limit = rateLimit(`reset-ip:${meta.ip}`, 5, 15 * 60_000);
+  const limit = await rateLimit(`reset-ip:${meta.ip}`, 20, IP_WINDOW_MS);
   if (!limit.allowed) throw new AppError("RATE_LIMITED", "Trop de demandes. Réessayez dans quelques minutes.");
   const parsed = emailSchema.safeParse(emailInput);
   if (!parsed.success) return;

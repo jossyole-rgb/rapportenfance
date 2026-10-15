@@ -11,3 +11,4 @@ next-env.d.ts
 .env.*.local
 .dev-mailbox/
 backups/
+docker/*.env

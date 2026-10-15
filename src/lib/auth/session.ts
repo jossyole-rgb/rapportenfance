@@ -7,6 +7,8 @@ import { generateToken, hashToken } from "@/lib/security/crypto";
 const isProd = () => process.env.NODE_ENV === "production";
 // Le préfixe __Host- impose Secure, Path=/ et l'absence de Domain (cookie lié à l'hôte)
 export const SESSION_COOKIE = () => (isProd() ? "__Host-re_session" : "re_session");
+/** Cookie de l'étape « second facteur » (5 minutes, jeton dont seule l'empreinte est stockée). */
+export const MFA_COOKIE = () => (isProd() ? "__Host-re_mfa" : "re_mfa");
 
 const maxAgeMs = () => Number(process.env.SESSION_MAX_AGE_HOURS || 10) * 3600_000;
 const idleMs = () => Number(process.env.SESSION_IDLE_TIMEOUT_MINUTES || 30) * 60_000;

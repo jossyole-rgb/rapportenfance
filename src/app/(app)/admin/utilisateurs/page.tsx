@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badges";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { revokeInvitationAction } from "@/app/actions/admin";
+import { adminResetMfaAction } from "@/app/actions/mfa";
 import { InviteForm, UserRowForm } from "./forms";
 
 export const metadata: Metadata = { title: "Utilisateurs" };
@@ -28,9 +29,18 @@ export default async function UsersPage() {
                     <span className="text-sm text-slate-500">{u.email}</span>
                     {!u.isActive && <Badge tone="red">Désactivé</Badge>}
                     {u.lockedUntil && u.lockedUntil > new Date() && <Badge tone="amber">Verrouillé</Badge>}
+                    {u.totpEnabledAt ? <Badge tone="green">Double authentification</Badge> : <Badge tone="slate">Sans double authentification</Badge>}
                     <span className="ml-auto text-xs text-slate-400">{u.lastLoginAt ? `Dernière connexion ${fmtDateTime(u.lastLoginAt)}` : "Jamais connecté"}</span>
                   </div>
                   <UserRowForm user={u} self={u.id === user.id} />
+                  {u.totpEnabledAt && u.id !== user.id && (
+                    <form action={adminResetMfaAction}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button type="submit" className="text-xs font-medium text-err-700 hover:underline">
+                        Réinitialiser la double authentification (téléphone perdu)
+                      </button>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>

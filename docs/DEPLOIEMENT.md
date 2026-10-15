@@ -35,7 +35,26 @@ npm start                  # PORT=3000 par défaut
 ```
 
 - Ne **jamais** exécuter `npm run db:seed` ni `db:reset` en production.
-- Créer le premier administrateur technique par une commande ponctuelle encadrée (script à exécuter une fois, voir feuille de route), puis créer les établissements depuis l'écran **Plateforme** ; chaque administrateur d'établissement invite ses utilisateurs.
+- **Amorçage** : créer le premier administrateur technique sur le serveur avec
+  `npm run admin -- create-tech-admin --email prenom.nom@exemple.fr --name "Prénom Nom"`.
+  La commande affiche un lien de définition du mot de passe (60 min, usage unique) : aucun mot de passe ne transite par la ligne de commande. La double authentification est exigée à la première connexion.
+- Créer ensuite les établissements depuis l'écran **Plateforme** (double authentification exigée par défaut pour chaque nouvel établissement) ; chaque administrateur d'établissement invite ses utilisateurs.
+- Autres commandes d'exploitation : `npm run admin -- reset-mfa --email …` (téléphone perdu, quand aucun autre administrateur ne peut le faire), `npm run admin -- unlock --email …`. Toutes sont tracées dans le journal d'audit.
+
+### Variante conteneurisée (Docker Compose)
+
+Fichiers fournis : `Dockerfile` (Node.js 22, utilisateur non privilégié, migrations appliquées au démarrage) et `docker-compose.yml` (application + PostgreSQL 16, base non exposée, application publiée sur `127.0.0.1:3000` derrière le reverse proxy, système de fichiers en lecture seule, aucune capacité Linux).
+
+```bash
+cp docker/db.env.example docker/db.env      # mot de passe fort
+cp docker/app.env.example docker/app.env    # même mot de passe, APP_URL, clé, SMTP
+docker compose up -d --build
+docker compose exec app npm run admin -- create-tech-admin --email … --name "…"
+# tâche planifiée de l'hôte :
+# 15 2 * * *  cd /srv/rapportenfance && docker compose exec -T app npm run retention:purge
+```
+
+Vérifié le 15/10/2026 sur un poste de test : construction de l'image, migrations, démarrage, amorçage par la commande ci-dessus, puis activation forcée de la double authentification et reconnexion avec code et code de secours. Sauvegarde dans ce mode : `docker compose exec -T db pg_dump -U rapport --format=custom rapportenfance > sauvegarde.dump`.
 
 ## 4. Reverse proxy
 
@@ -72,17 +91,19 @@ Tester la restauration au moins une fois par trimestre et consigner le test.
 15 2 * * *  cd /srv/rapportenfance && npm run retention:purge >> /var/log/rapportenfance-purge.log 2>&1
 ```
 
-Chaque purge est tracée dans le journal d'audit (`retention.purged`, sans contenu).
+Chaque purge est tracée dans le journal d'audit (`retention.purged`, sans contenu). La même tâche supprime les enregistrements techniques expirés (sessions, vérifications de second facteur, jetons, compteurs de débit).
 
 ## 7. Rotation de la clé de chiffrement
 
 1. Générer une nouvelle clé (`npm run keys:generate`).
 2. Déployer avec `DATA_ENCRYPTION_KEY=<nouvelle>`, `DATA_ENCRYPTION_KEY_ID=v2`, `DATA_ENCRYPTION_KEYS_PREVIOUS="v1:<ancienne>"`.
-3. Les nouvelles écritures utilisent v2 ; les anciennes restent lisibles. Le ré-chiffrement en masse des anciennes valeurs est prévu dans la feuille de route ; d'ici là, conserver l'ancienne clé.
+3. Les nouvelles écritures utilisent v2 ; les anciennes restent lisibles.
+4. Sauvegarder la base, puis ré-chiffrer les anciennes valeurs : `npm run keys:reencrypt -- --dry-run` (comptage), puis `npm run keys:reencrypt`.
+5. Après vérification, retirer l'ancienne clé de `DATA_ENCRYPTION_KEYS_PREVIOUS`. **Conserver l'ancienne clé hors ligne tant que des sauvegardes antérieures existent.**
 
 ## 8. Plusieurs instances
 
-- La limitation de débit de connexion est **en mémoire** (par instance). Le verrouillage de compte, lui, est en base et reste efficace. Pour plusieurs instances, ajouter une limitation au niveau du reverse proxy ou un stockage partagé (feuille de route).
+- La limitation de débit (échecs de connexion par adresse IP, demandes de réinitialisation) et le verrouillage de compte sont stockés dans PostgreSQL : ils sont communs à toutes les instances.
 - Les sessions sont en base : pas d'affinité de session nécessaire.
 
 ## 9. Supervision

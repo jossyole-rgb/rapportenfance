@@ -13,6 +13,7 @@ const schema = z.object({
   AI_PROVIDER: z.enum(["local"]).default("local"),
   SMTP_URL: z.string().optional().default(""),
   MAIL_FROM: z.string().default("RapportEnfance IA <no-reply@example.org>"),
+  PLATFORM_MFA_REQUIRED: z.enum(["true", "false"]).default("true"),
 });
 
 export type Env = z.infer<typeof schema>;

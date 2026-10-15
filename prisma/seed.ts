@@ -18,8 +18,10 @@ async function main() {
 
   const org = await db.organization.upsert({
     where: { slug: "demo-aemo" },
-    update: {},
+    // Double authentification désactivée pour faciliter les démonstrations (activable dans les paramètres)
+    update: { mfaRequired: false },
     create: {
+      mfaRequired: false,
       name: "Association Fictive pour l'Enfance",
       slug: "demo-aemo",
       headerLine1: "Association Fictive pour l'Enfance",
@@ -30,8 +32,8 @@ async function main() {
   });
   const other = await db.organization.upsert({
     where: { slug: "demo-mecs" },
-    update: {},
-    create: { name: "MECS Fictive des Tilleuls", slug: "demo-mecs", headerLine1: "MECS Fictive des Tilleuls", validationMode: "SELF" },
+    update: { mfaRequired: false },
+    create: { mfaRequired: false, name: "MECS Fictive des Tilleuls", slug: "demo-mecs", headerLine1: "MECS Fictive des Tilleuls", validationMode: "SELF" },
   });
 
   const users: Array<{ email: string; fullName: string; jobTitle: string; roles: Role[]; org: string | null; service?: string }> = [

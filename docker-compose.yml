@@ -1,0 +1,41 @@
+# Déploiement auto-hébergé : application + PostgreSQL sur un même serveur.
+# Préparer docker/app.env et docker/db.env à partir des fichiers *.env.example (voir docs/DEPLOIEMENT.md).
+# Le reverse proxy TLS (Caddy, Nginx, Traefik ou celui de l'hébergeur) se place devant le port 3000.
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    env_file: docker/db.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Pas de port publié : la base n'est joignable que par l'application
+
+  app:
+    build: .
+    image: rapportenfance-ia:local
+    restart: unless-stopped
+    # processus init minimal (signaux, processus zombies)
+    init: true
+    env_file: docker/app.env
+    depends_on:
+      db:
+        condition: service_healthy
+    # Publié uniquement sur l'interface locale : exposer via le reverse proxy TLS
+    ports:
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:uid=1001,gid=1001
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  pgdata:

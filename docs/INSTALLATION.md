@@ -35,6 +35,7 @@ Renseigner dans `.env` :
 
 - `DATABASE_URL` : `postgresql://rapport:un-mot-de-passe-local@localhost:5432/rapportenfance?schema=public`
 - `DATA_ENCRYPTION_KEY` : la valeur affichée par `keys:generate` (32 octets base64)
+- `PLATFORM_MFA_REQUIRED="false"` sur un poste de démonstration, pour que le compte de démonstration `tech@…` se connecte sans double authentification (en production, laisser `true`).
 - Les autres valeurs par défaut conviennent en local. Sans `SMTP_URL`, les e-mails (invitations, réinitialisations) sont écrits dans `.dev-mailbox/`.
 
 L'application refuse de démarrer si la configuration est invalide (validation au démarrage dans `src/instrumentation.ts`).
@@ -74,11 +75,14 @@ npm run build && npm run db:seed && npm run test:e2e   # démarre/réutilise le 
 
 Les tests E2E créent de nouveaux écrits dans les données de démonstration. Pour repartir d'une base propre : `npm run db:reset` (supprime toute la base de développement puis rejoue migrations et seed).
 
+Le test de double authentification active puis fait réinitialiser la double authentification du compte `assistant.social@…` : il remet le compte dans son état initial. S'il est interrompu, `npm run admin -- reset-mfa --email assistant.social@demo.rapportenfance.fr` rétablit le compte.
+
 ## 7. Problèmes fréquents
 
 | Symptôme | Cause probable |
 | --- | --- |
 | `Configuration invalide (variables : …)` au démarrage | variable manquante ou mal formée, par exemple clé absente ou pas 32 octets base64 |
 | Erreur serveur à l'ouverture d'un écrit, journal « Clé de chiffrement inconnue » | la clé a changé ; remettre l'ancienne dans `DATA_ENCRYPTION_KEYS_PREVIOUS` |
-| Connexion impossible après plusieurs essais | compte verrouillé 15 min après 5 échecs (comportement voulu) |
+| Connexion impossible après plusieurs essais | compte verrouillé 15 min après 5 échecs (comportement voulu) ; `npm run admin -- unlock --email …` |
+| Téléphone perdu | code de secours, ou réinitialisation par l'administrateur de l'établissement (**Utilisateurs**), ou `npm run admin -- reset-mfa --email …` |
 | Session expirée rapidement | inactivité de 30 min (`SESSION_IDLE_TIMEOUT_MINUTES`) |
